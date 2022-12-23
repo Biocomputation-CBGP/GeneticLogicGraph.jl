@@ -1,68 +1,46 @@
 module GeneticLogicGraph
 
-using ModelingToolkit: @variables, @parameters, @nonamespace
-using ModelingToolkit: get_variables, ParentScope, GlobalScope, getvar
+using ModelingToolkit: @variables, @parameters, @nonamespace, @named
+using ModelingToolkit: ParentScope, GlobalScope, getvar, compose, extend, namespace_expr
+using ModelingToolkit: get_variables
 using ModelingToolkit: JumpSystem
 using Catalyst: @reaction_network, @reaction
-using Catalyst: ReactionSystem, Reaction, addreaction!
+using Catalyst: ReactionSystem, Reaction, addreaction!, make_empty_network, JumpProblem
+using Catalyst: substoichmat, prodstoichmat
+using JumpProcesses: NRM, Direct, DirectCR, SSAStepper, reset_aggregated_jumps!
+using DiffEqBase: DiscreteCallback, EnsembleProblem, EnsembleThreads
+using SciMLBase
+using Distributions: Binomial
 
-import ModelingToolkit: equations, states, parameters, get_states, flatten
+import JumpProcesses: JumpProblem
+import DiffEqBase: DiscreteProblem
 
-abstract type Component end
-export Component
+import ModelingToolkit: equations, states, parameters, get_states, flatten, get_defaults
+import ModelingToolkit: JumpSystem
+import Catalyst: reactioncomplexes, subnetworks, addreaction!, reactions
 
-# methods from ModelingToolkit
-equations(x::Component)  = equations(x.reaction_system)
-parameters(x::Component) = parameters(x.reaction_system)
-states(x::Component)     = states(x.reaction_system)
-get_states(x::Component) = get_states(x.reaction_system)
-flatten(x::Component)    = flatten(x.reaction_system)
-
-# methods from Base
-Base.convert(::Type{ReactionSystem}, x::Component) = x.reaction_system
-Base.nameof(x::Component) = nameof(x.reaction_system)
-Base.show(io::IO, x::Component) = show(io, x.reaction_system)
-
-function Base.show(io::IO, m::MIME"text/plain", x::Component)
-    show(io, m, x.reaction_system)
-end
-
-function Base.getproperty(x::Component, sym::Symbol)
-    sys = Base.getfield(x, :reaction_system)
-    sym == :reaction_system && return sys
-    return Base.getproperty(sys, sym)
-end
-
-macro component(name, super)
-    :(abstract type $(esc(name)) <: $(esc(super)) end)
-end
-macro component(name, super, network)
-    :(begin
-          struct $(esc(name)) <: $(esc(super))
-              reaction_system::ReactionSystem
-              $(esc(name))(x::ReactionSystem) = new(x)
-          end
-          function $(esc(name))(; name)
-              rs = $network
-              $(esc(name))(rs)
-          end
-      end)
-end
-
-export equations, states, parameters, flatten
+include("component.jl")
+export @component
+export equations, states, parameters, addreaction!, reactions, flatten
+export random_state, set_count
 
 include("products.jl")
-export Products
+export ConstantSpecies
 export Monomer
 export Dimer
 
 include("promoters.jl")
-export Promoters
-export SimplePromoter
+export Promoter
 export TwoStatePromoter
-export express!
+export express
+
+include("operons.jl")
+export Operon
 
 include("graph.jl")
 export Circuit
+export prune
+export sampling
+export DiscreteProblem, JumpProblem
 
 end # module GeneticLogicGraph
