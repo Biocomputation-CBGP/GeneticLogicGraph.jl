@@ -1,46 +1,73 @@
 module GeneticLogicGraph
 
-using ModelingToolkit: @variables, @parameters, @nonamespace, @named
-using ModelingToolkit: ParentScope, GlobalScope, getvar, compose, extend, namespace_expr
-using ModelingToolkit: get_variables
-using ModelingToolkit: JumpSystem
-using Catalyst: @reaction_network, @reaction
-using Catalyst: ReactionSystem, Reaction, addreaction!, make_empty_network, JumpProblem
-using Catalyst: substoichmat, prodstoichmat
-using JumpProcesses: NRM, Direct, DirectCR, SSAStepper, reset_aggregated_jumps!
-using DiffEqBase: DiscreteCallback, EnsembleProblem, EnsembleThreads
-using SciMLBase
-using Distributions: Binomial
+using Symbolics
+using SymbolicUtils: Symbolic
+using ModelingToolkit
+using Catalyst
+using Distributions
+using JumpProcesses
+using Graphs
 
-import JumpProcesses: JumpProblem
-import DiffEqBase: DiscreteProblem
 
-import ModelingToolkit: equations, states, parameters, get_states, flatten, get_defaults
-import ModelingToolkit: JumpSystem
-import Catalyst: reactioncomplexes, subnetworks, addreaction!, reactions
+struct Dilute end
+Symbolics.option_to_metadata_type(::Val{:dilute}) = Dilute
+isdilutable(x) = getmetadata(x, Dilute, false)
+export isdilutable
 
-include("component.jl")
-export @component
-export equations, states, parameters, addreaction!, reactions, flatten
-export random_state, set_count
+abstract type Species end
 
-include("products.jl")
-export ConstantSpecies
+function ConcreteSystemType(::Type{T}) where {T<:Species}
+    return ReactionSystem{
+        Nothing,
+        Catalyst.NetworkProperties{Int, Term{Real, Base.ImmutableDict{DataType, Any}}}
+    }
+end
+
+abstract type InputSpecies <: Species end
+abstract type Monomer <: Species end
+abstract type Dimer <: Species end
+promote_rule(::Type{InputSpecies}, ::Type{Monomer}) = Species
+promote_rule(::Type{InputSpecies}, ::Type{Dimer}) = Species
+promote_rule(::Type{Monomer}, ::Type{Dimer}) = Species
+component_type(x) = first(x.connection_type)
+component_args(x) = x.connection_type[2:end]
+
+export InputSpecies
 export Monomer
 export Dimer
 
+include("utils.jl")
+export prune
+
+include("products.jl")
+export randu0
+
+abstract type PromoterRegion end
+
+function ConcreteSystemType(::Type{T}) where {T<:PromoterRegion}
+    return ReactionSystem{
+        Nothing,
+        Catalyst.NetworkProperties{Int, Term{Real, Base.ImmutableDict{DataType, Any}}}
+    }
+end
+
+abstract type RegulatedPromoter <: PromoterRegion end
+
+export PromoterRegion
+export RegulatedPromoter
+
 include("promoters.jl")
-export Promoter
-export TwoStatePromoter
-export express
+export randu0
 
 include("operons.jl")
-export Operon
+export connections
+
+abstract type Circuit end
+export Circuit
 
 include("graph.jl")
-export Circuit
-export prune
-export sampling
-export DiscreteProblem, JumpProblem
+export SingleEdge
+export make_doubling_callback
+export make_termination_callback
 
 end # module GeneticLogicGraph

@@ -1,50 +1,34 @@
-@component function Promoter(; name, k=1)
-    k, = @parameters k=k
-    t, promoter = @variables t promoter(t)
-    ReactionSystem(Reaction[], t, [promoter], [k]; name=name)
-end
-
-express(p::Promoter, x::Vector{<:Component}) = return express(p.reaction_system, x)
-function express(p::ReactionSystem, x::Vector{<:Component})
-    N = length(x)
-    if N > 0
-        promoter = @nonamespace p.promoter
-        k = @nonamespace p.k
-        rnas = GlobalScope.(getproperty.(x, :rna))
-        products = [promoter; rnas]
-        rxs = [Reaction(k, [promoter], products, [1], fill(1, N+1))]
-        p = Promoter(ReactionSystem(rxs, p.iv, states(p), parameters(p); name=nameof(p)))
-    end
-    return p
-end
-
-random_state(x::Promoter) = Dict(x.promoter => rand(0:1))
-
-@component function TwoStatePromoter(a::Promoter, b::Promoter, factor; name, binding=1, unbinding=1)
+function PromoterRegion(transcription; name)
     @variables t
-    @parameters binding=binding unbinding=unbinding
-    factor = GlobalScope(factor)
-    rxs = [
-        (@reaction $(binding), $(a.promoter) + $factor --> $(b.promoter)),
-        (@reaction $(unbinding), $(b.promoter) --> $(a.promoter) + $factor),
-    ]
-    systems = [a.reaction_system, b.reaction_system]
-    ReactionSystem(rxs, t, [], [binding, unbinding]; systems=systems, name=name)
+    @variables promoter(t)      [description="RNAP recruiting region of DNA", dilute=false]
+    @parameters λ=transcription [description="Transcription rate from this promoter region"]
+    opts = Dict(:name => name, :connection_type => (PromoterRegion, ))
+    return ReactionSystem(Reaction[], t, [promoter], [λ]; opts...)
 end
 
-function express(p::TwoStatePromoter, x::Vector{<:Component})
-    a = express(p.systems[1], x).reaction_system
-    b = express(p.systems[2], x).reaction_system
-    return TwoStatePromoter(
-        ReactionSystem(reactions(p), p.iv, get_states(p), p.ps; name=nameof(p), systems=[a,b]))
+function RegulatedPromoter(bound::ReactionSystem, unbound::ReactionSystem, ligand::ReactionSystem, binding, unbinding; name)
+    Rs = GlobalScope.(states(ligand, ModelingToolkit.outputs(ligand)))
+    @variables t
+    @parameters k₁=binding   [description="Binding rate of the ligand to the promoter region"]
+    @parameters k₀=unbinding [description="Unbinding rate of the ligand from the promoter region"]
+    bindings   = [Reaction(k₁, [unbound.promoter, R], [bound.promoter]) for R in Rs]
+    unbindings = [Reaction(k₀, [bound.promoter], [R, unbound.promoter]) for R in Rs]
+    opts = Dict(
+        :name => name,
+        :systems => [unbound, bound],
+        :connection_type => (RegulatedPromoter, ligand)
+    )
+    return ReactionSystem([bindings; unbindings], t, [], [k₀, k₁]; opts...)
 end
 
-function random_state(x::TwoStatePromoter)
+function RegulatedPromoter(bound::Real, unbound::Real, ligand::ReactionSystem, binding, unbinding; name)
+    @named bound   = PromoterRegion(bound)
+    @named unbound = PromoterRegion(unbound)
+    RegulatedPromoter(bound, unbound, ligand, binding, unbinding; name=name)
+end
+
+randu0(::Type{PromoterRegion}, x::ReactionSystem) = Dict(x.promoter => 1)
+function randu0(::Type{RegulatedPromoter}, x::ReactionSystem)
     i = rand(0:1)
-    p1 = namespace_expr(x.systems[1].promoter, x.reaction_system, Symbol(:promoters, :₊, nameof(x)))
-    p2 = namespace_expr(x.systems[2].promoter, x.reaction_system, Symbol(:promoters, :₊, nameof(x)))
-    Dict(p1 => i, p2 => 1 - i)
+    Dict(x.bound.promoter => i, x.unbound.promoter => 1 - i)
 end
-
-
-
