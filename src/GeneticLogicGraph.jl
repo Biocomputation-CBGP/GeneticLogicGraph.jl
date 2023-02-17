@@ -11,7 +11,7 @@ using Graphs
 
 struct Dilute end
 Symbolics.option_to_metadata_type(::Val{:dilute}) = Dilute
-isdilutable(x) = getmetadata(x, Dilute, false)
+isdilutable(x)::Bool = getmetadata(x, Dilute, false)
 export isdilutable
 
 abstract type Species end

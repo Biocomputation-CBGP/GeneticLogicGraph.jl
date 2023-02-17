@@ -22,32 +22,46 @@ function Circuit(A::Matrix{Bool}, systems; name)
     @variables t N(t)=0
     @parameters μ
     push!(rxs, (@reaction μ, ∅ --> N))
-    rs = ReactionSystem(rxs, t, [N], [μ]; name=name, connection_type=(Circuit,))
-    return compose(rs, unique(syss))
+    return ReactionSystem(
+        rxs, t, [N], [μ];
+        name=name, connection_type=(Circuit,), systems=unique(syss)
+    )
 end
 
 function Circuit(G::DiGraph, systems; name)
     Circuit(Matrix(Graphs.adjacency_matrix(G) .> 0), systems; name=name)
 end
 
-function make_doubling_callback(model)
-    idxs = findall(isdilutable, states(model))
-    Nidx = findfirst(isequal(@nonamespace model.N), states(model))
+function find_N_idx(vars::Vector{T}) where {T<:Term}
+    return findfirst(x -> nameof(x.f) == :N, vars)
+end
 
-    function affect!(integrator)
-        integrator.u[idxs] .= rand.(Binomial.(@view integrator.u[idxs]))
-        integrator.u[Nidx] = 0
-        reset_aggregated_jumps!(integrator)
+function find_dilutable_idxs(vars::Vector{T}) where {T<:Term}
+    return collect(1:length(vars))[isdilutable.(vars)]
+end
+
+function make_doubling_callback(model)
+    N::Int = find_N_idx(states(model))
+    I::Vector{Int} = find_dilutable_idxs(states(model))
+    condition = let N=N
+        (u, t, integrator) -> u[N] > 0
     end
-    condition(u, t, integrator) = u[Nidx] == 1
+    affect! = let N=N, I=I
+        function (integrator)
+            integrator.u[I] .= rand.(Binomial.(@view integrator.u[I]))
+            integrator.u[N] = 0
+            reset_aggregated_jumps!(integrator)
+        end
+    end
     return DiscreteCallback(condition, affect!, save_positions=(false, false))
 end
 
 function make_termination_callback(dt_min)
-    condition(u, t, integrator) = (integrator.tstop - integrator.t) < dt_min
+    condition = let dt=dt_min
+        (u, t, integrator) -> (integrator.tstop - integrator.t) < dt_min
+    end
     function affect!(integrator)
-        @debug "The simulation was terminated because dt < $(dt_min)"
-        integrator.u .= -1
+        integrator.u .= typemax(Int)
         terminate!(integrator)
     end
     return DiscreteCallback(condition, affect!, save_positions=(false, false))
