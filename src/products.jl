@@ -1,3 +1,19 @@
+"""
+    InputSpecies(production, degradation; name)
+
+Construct a model of a chemical species which is created from nothing.
+
+InputSpecies can be used as "sources" in larger models. They have no
+transcription or translation reactions, only production and
+degradation.
+
+# Example
+```julia-repl
+julia> using ModelingToolkit
+
+julia> @named IPTG = InputSpecies(1, 0.1)
+```
+"""
 function InputSpecies(production, degradation; name)
     @parameters λ=production  [description="Rate of production for this species"]
     @parameters α=degradation [description="Rate of degradation for this species"]
@@ -16,65 +32,109 @@ function InputSpecies(production, degradation; name)
     return ReactionSystem(rxs, t, [species], [λ, α]; opts...)
 end
 
-function Monomer(translation, rna_degradation, degradation; name)
-    @parameters λ=translation      [description="Rate of protein synthesis (translation) from mRNA"]
-    @parameters α₁=rna_degradation [description="Rate of RNA degradation"]
-    @parameters α₂=degradation     [description="Rate of protein degradation"]
-    
+"""
+    ConstantSpecies(level; name)
+
+Construct a model of a chemical species which is has constant abundance.
+
+ConstantSpecies can be used as "sources" in larger models. They are
+not produced or degraded or diluted.
+
+# Example
+```julia-repl
+julia> using ModelingToolkit
+
+julia> @named IPTG = ConstantSpecies(1)
+```
+"""
+function ConstantSpecies(level; name)
+    @variables t
+    @variables species(t)=level [
+        description="The abundance of the species",
+        dilute=false,
+        output=true
+    ]
+    opts = Dict(:name => name, :connection_type => (ConstantSpecies, ))
+    return ReactionSystem(Reaction[], t, [species], []; opts...)
+end
+
+function Monomer(translation; name)
+    @parameters λ=translation [description="Rate of protein synthesis (translation) from mRNA"]
     @variables t
     @variables rna(t) [
         description="Abundance of mRNA for the monomer",
         dilute=true,
+        mrna=true,
         input=true
     ]
     @variables monomer(t) [
         description="Abundance of monomers",
         dilute=true,
+        protein=true,
         output=true
-    ]
-    rxs = [
-        Reaction(λ, [rna], [rna, monomer]),
-        Reaction(α₁, [rna], nothing),
-        Reaction(α₂, [monomer], nothing),
-    ]
+    ]    
     opts = Dict(:name => name, :connection_type => (Monomer, ))
-    return ReactionSystem(rxs, t, [rna, monomer], [λ, α₁, α₂]; opts...)
+    return ReactionSystem(Reaction[], t, [rna, monomer], [λ]; opts...)
 end
 
-function Dimer(translation, rna_degradation, degradation, binding, unbinding; name)
+function Dimer(translation, binding, unbinding; name)
     @parameters λ=translation      [description="Rate of protein synthesis (translation) from mRNA"]
-    @parameters α₁=rna_degradation [description="Rate of RNA degradation"]
-    @parameters α₂=degradation     [description="Rate of protein degradation"]
     @parameters k₋₁=unbinding      [description="Rate of dimer unbinding"]
     @parameters k₁=binding         [description="Rate of monomer dimerisation"]
     
     @variables t
     @variables rna(t) [
         description="Abundance of mRNA for the monomer",
+        mrna=true,
         dilute=true,
         input=true
     ]
     @variables monomer(t) [
         description="Abundance of monomers",
+        protein=true,
         dilute=true,
     ]
     @variables dimer(t) [
         description="Abundance of dimers",
+        protein=true,
         dilute=true,
         output=true
     ]
     rxs = [
-        Reaction(λ, [rna], [rna, monomer]),
-        Reaction(α₁, [rna], []),
-        Reaction(α₂, [monomer], []),
-        Reaction(α₂, [dimer], []),
         Reaction(k₁, [monomer], [dimer], [2], [1]),
         Reaction(k₋₁, [dimer], [monomer], [1], [2]),
     ]
-    T =  ConcreteSystemType(Dimer)
     opts = Dict(:name => name, :connection_type => (Dimer, ))
-    return ReactionSystem(rxs, t, [rna, monomer, dimer], [λ, α₁, α₂, k₋₁, k₁]; opts...)
+    return ReactionSystem(rxs, t, [rna, monomer, dimer], [λ, k₋₁, k₁]; opts...)
 end
+
+function _translation_reactions(x::ReactionSystem)
+    return [Reaction(x.λ, [x.rna], [x.rna, x.monomer])]
+end
+
+function _translation_reactions(x::ReactionSystem, ribosome, r₁, r₋₁)
+    s = Symbol((@nonamespace x.rna).val.f.name, "_ribosome_complex")
+    vs = @variables t $s(t) [
+        description="The ribsosome-rna complex",
+        dilute=true
+    ]
+    complex = vs[2]
+    addspecies!(x, complex)
+    return [
+        Reaction(r₁, [x.rna, ribosome], [getproperty(x, s)]),
+        Reaction(r₋₁, [getproperty(x, s)], [x.rna, ribosome]),
+        Reaction(x.λ, [getproperty(x, s)], [x.rna, ribosome, x.monomer]),
+    ]
+end
+
+function _mrna_degradation_reactions(x::ReactionSystem, α)
+    return [Reaction(α, [x.rna], nothing)]
+end
+
+translation_reactions(::Type{Monomer}, x::ReactionSystem, args...) = _translation_reactions(x, args...)
+translation_reactions(::Type{Dimer}, x::ReactionSystem, args...) = _translation_reactions(x, args...)
+mrna_degradation_reactions(::Type{Monomer}, x::ReactionSystem, args...) = _mrna_degradation_reactions(x, args...)
+mrna_degradation_reactions(::Type{Dimer}, x::ReactionSystem, args...) = _mrna_degradation_reactions(x, args...)
 
 randu0(x::ReactionSystem) = randu0(component_type(x), x)
 randu0(::Type{InputSpecies}, x) = Dict(x.species => rand(0:16))

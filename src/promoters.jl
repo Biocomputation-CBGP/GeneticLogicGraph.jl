@@ -27,6 +27,25 @@ function RegulatedPromoter(bound::Real, unbound::Real, ligand::ReactionSystem, b
     RegulatedPromoter(bound, unbound, ligand, binding, unbinding; name=name)
 end
 
+function transcription_reactions(::Type{PromoterRegion}, ::Type{<:Species}, x, args...)
+    rnas = filter(ismrna, reduce(vcat, states(y, states(y)) for y in args))
+    return [Reaction(x.λ, [x.promoter], [x.promoter; rnas], [1], ones(Int, length(rnas) + 1))]
+end
+
+function transcription_reactions(::Type{PromoterRegion}, ::Type{RegulatedPromoter}, x, args...)
+    return transcription_reactions(x, reduce(vcat, collect(component_args(y)) for y in args)...)
+end
+
+function transcription_reactions(::Type{RegulatedPromoter}, ::Type{RegulatedPromoter}, x, args...)
+    return vcat(transcription_reactions(x.bound, args...), transcription_reactions(x.unbound, args...))
+end
+
+function transcription_reactions(::Type{RegulatedPromoter}, ::Type{<:Species}, x, args...)
+    return vcat(transcription_reactions(x.bound, args...), transcription_reactions(x.unbound, args...))
+end
+
+
+
 randu0(::Type{PromoterRegion}, x::ReactionSystem) = Dict(x.promoter => 1)
 function randu0(::Type{RegulatedPromoter}, x::ReactionSystem)
     i = rand(0:1)

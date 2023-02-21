@@ -9,7 +9,15 @@ Random.seed!(7)
         include("utils.jl")
     end
 
-    @testset "Model definitions" begin
-        include("models.jl")
+    @testset "Product model definitions" begin
+        include("products.jl")
+    end
+
+    @testset "Promoter model definitions" begin
+        include("promoters.jl")
+    end
+
+    @testset "Reaction generating functions" begin
+        include("reactions.jl")
     end
 end
