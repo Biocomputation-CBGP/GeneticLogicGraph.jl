@@ -7,18 +7,18 @@ function PromoterRegion(transcription; name)
 end
 
 function RegulatedPromoter(bound::ReactionSystem, unbound::ReactionSystem, ligand::ReactionSystem, binding, unbinding; name)
-    Rs = GlobalScope.(states(ligand, ModelingToolkit.outputs(ligand)))
+    R = GlobalScope.(states(ligand, ModelingToolkit.outputs(ligand)))[1]
     @variables t
     @parameters k₁=binding   [description="Binding rate of the ligand to the promoter region"]
     @parameters k₀=unbinding [description="Unbinding rate of the ligand from the promoter region"]
-    bindings   = [Reaction(k₁, [unbound.promoter, R], [bound.promoter]) for R in Rs]
-    unbindings = [Reaction(k₀, [bound.promoter], [R, unbound.promoter]) for R in Rs]
+    binding   = Reaction(k₁, [unbound.promoter, R], [bound.promoter])
+    unbinding = Reaction(k₀, [bound.promoter], [R, unbound.promoter])
     opts = Dict(
         :name => name,
         :systems => [unbound, bound],
         :connection_type => (RegulatedPromoter, ligand)
     )
-    return ReactionSystem([bindings; unbindings], t, [], [k₀, k₁]; opts...)
+    return ReactionSystem([binding, unbinding], t, [], [k₀, k₁]; opts...)
 end
 
 function RegulatedPromoter(bound::Real, unbound::Real, ligand::ReactionSystem, binding, unbinding; name)
@@ -43,8 +43,6 @@ end
 function transcription_reactions(::Type{RegulatedPromoter}, ::Type{<:Species}, x, args...)
     return vcat(transcription_reactions(x.bound, args...), transcription_reactions(x.unbound, args...))
 end
-
-
 
 randu0(::Type{PromoterRegion}, x::ReactionSystem) = Dict(x.promoter => 1)
 function randu0(::Type{RegulatedPromoter}, x::ReactionSystem)

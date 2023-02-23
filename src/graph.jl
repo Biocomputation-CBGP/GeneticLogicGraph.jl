@@ -26,7 +26,7 @@ end
 function _FiniteRibosomeCircuit(A::Matrix{Bool}, systems; name)
     syss = used_systems(A, systems)
     @named Ribosome = Monomer(0.1)
-    @named pRibosome = PromoterRegion(0.1)
+    @named pRibosome = PromoterRegion(0.5)
     append!(syss, [Ribosome, pRibosome])
 
     @variables t N(t)=0
@@ -37,7 +37,7 @@ function _FiniteRibosomeCircuit(A::Matrix{Bool}, systems; name)
         transcription_reactions(pRibosome, Ribosome);
         reduce(vcat, mrna_degradation_reactions(sys, α) for sys in syss);
         reduce(vcat, translation_reactions(sys, Ribosome.monomer, r₁, r₋₁) for sys in syss);
-        [Reaction(μ, nothing, [N])];
+        [Reaction(μ, [Ribosome.monomer], [Ribosome.monomer, N])];
     ]
 
     return ReactionSystem(
@@ -97,12 +97,23 @@ function make_doubling_callback(model)
     return DiscreteCallback(condition, affect!, save_positions=(false, false))
 end
 
-function make_termination_callback(dt_min)
-    condition = let dt=dt_min
-        (u, t, integrator) -> (integrator.tstop - integrator.t) < dt_min
+function make_termination_callback(time_max)
+    start_time::Float64 = 0.0
+    condition = let time_max=time_max
+        function (u, t, integrator)
+            if start_time == 0.0
+                start_time = time()
+            end
+            if time() - start_time >= time_max
+                start_time = 0.0
+                return true
+            end
+            return false
+        end
     end
     function affect!(integrator)
-        integrator.u .= typemax(Int)
+        integrator.u .= 987654321
+        @warn "Terminating early"
         terminate!(integrator)
     end
     return DiscreteCallback(condition, affect!, save_positions=(false, false))

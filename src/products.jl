@@ -14,10 +14,8 @@ julia> using ModelingToolkit
 julia> @named IPTG = InputSpecies(1, 0.1)
 ```
 """
-function InputSpecies(production, degradation; name)
+function InputSpecies(production; name)
     @parameters λ=production  [description="Rate of production for this species"]
-    @parameters α=degradation [description="Rate of degradation for this species"]
-
     @variables t
     @variables species(t) [
         description="The abundance of the species",
@@ -26,10 +24,9 @@ function InputSpecies(production, degradation; name)
     ]
     rxs = [
         Reaction(λ, nothing, [species]),
-        Reaction(α, [species], nothing),
     ]
     opts = Dict(:name => name, :connection_type => (InputSpecies, ))
-    return ReactionSystem(rxs, t, [species], [λ, α]; opts...)
+    return ReactionSystem(rxs, t, [species], [λ]; opts...)
 end
 
 """
@@ -114,7 +111,7 @@ end
 
 function _translation_reactions(x::ReactionSystem, ribosome, r₁, r₋₁)
     s = Symbol((@nonamespace x.rna).val.f.name, "_ribosome_complex")
-    vs = @variables t $s(t) [
+    vs = @variables t $s(t)=0 [
         description="The ribsosome-rna complex",
         dilute=true
     ]
@@ -137,6 +134,7 @@ mrna_degradation_reactions(::Type{Monomer}, x::ReactionSystem, args...) = _mrna_
 mrna_degradation_reactions(::Type{Dimer}, x::ReactionSystem, args...) = _mrna_degradation_reactions(x, args...)
 
 randu0(x::ReactionSystem) = randu0(component_type(x), x)
+randu0(::Type{ConstantSpecies}, x) = Dict(x.species => rand(0:16))
 randu0(::Type{InputSpecies}, x) = Dict(x.species => rand(0:16))
 randu0(::Type{Monomer}, x) = Dict(x.rna => rand(0:16), x.monomer => rand(0:16))
 randu0(::Type{Dimer}, x) = merge(randu0(Monomer, x), Dict(x.dimer => rand(0:4)))
