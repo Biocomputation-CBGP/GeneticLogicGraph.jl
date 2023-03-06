@@ -1,6 +1,7 @@
 using GeneticLogicGraph
 using Test
 using Graphs
+using ModelingToolkit
 
 const GLG = GeneticLogicGraph
 
@@ -37,4 +38,16 @@ const GLG = GeneticLogicGraph
     expected = SimpleDiGraph(5)
     add_edge!(expected, Edge(1, 1))
     @test GLG.prune(graph, [1]) == expected
+end
+
+@testset "Initial conditions" begin
+    I = InputSpecies(1; name=:I)
+
+    @variables t
+    v = @variables I₊species(t)
+    @test any(isequal(v[1]), keys(randu0(I)))
+
+    C = ConstantSpecies(1; name=:C)
+    v = @variables C₊species(t)
+    @test any(isequal(v[1]), keys(randu0(C)))
 end
