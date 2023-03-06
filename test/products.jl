@@ -7,22 +7,20 @@ const GLG = GeneticLogicGraph
 
 
 @testset "InputSpecies definition" begin
-    @named model = InputSpecies(1.0, 1.0)
+    @named model = InputSpecies(1.0)
 
-    @test length(equations(model)) == 2
+    @test length(equations(model)) == 1
     @test length(states(model)) == 1
-    @test length(parameters(model)) == 2
+    @test length(parameters(model)) == 1
 
     @variables t species(t)
     @test isequal(t, ModelingToolkit.get_iv(model))
     @test any(isequal(species), states(model))
     @test any(isequal(species), ModelingToolkit.outputs(model))
 
-    @parameters λ α
+    @parameters λ
     @test any(isequal(λ), parameters(model))
-    @test any(isequal(α), parameters(model))
     @test ModelingToolkit.get_defaults(model)[λ] == 1.0
-    @test ModelingToolkit.get_defaults(model)[α] == 1.0
 
     @test GLG.component_type(model) == GLG.InputSpecies
 end

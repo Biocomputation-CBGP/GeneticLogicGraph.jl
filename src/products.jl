@@ -17,7 +17,7 @@ julia> @named IPTG = InputSpecies(1, 0.1)
 function InputSpecies(production; name)
     @parameters λ=production  [description="Rate of production for this species"]
     @variables t
-    @variables species(t) [
+    @species species(t) [
         description="The abundance of the species",
         dilute=true,
         protein=true,
@@ -47,7 +47,7 @@ julia> @named IPTG = ConstantSpecies(1)
 """
 function ConstantSpecies(level; name)
     @variables t
-    @variables species(t)=level [
+    @species species(t)=level [
         description="The abundance of the species",
         dilute=false,
         output=true
@@ -59,13 +59,13 @@ end
 function Monomer(translation; name)
     @parameters λ=translation [description="Rate of protein synthesis (translation) from mRNA"]
     @variables t
-    @variables rna(t) [
+    @species rna(t) [
         description="Abundance of mRNA for the monomer",
         dilute=true,
         mrna=true,
         input=true
     ]
-    @variables monomer(t) [
+    @species monomer(t) [
         description="Abundance of monomers",
         dilute=true,
         protein=true,
@@ -81,18 +81,18 @@ function Dimer(translation, binding, unbinding; name)
     @parameters k₁=binding         [description="Rate of monomer dimerisation"]
     
     @variables t
-    @variables rna(t) [
+    @species rna(t) [
         description="Abundance of mRNA for the monomer",
         mrna=true,
         dilute=true,
         input=true
     ]
-    @variables monomer(t) [
+    @species monomer(t) [
         description="Abundance of monomers",
         protein=true,
         dilute=true,
     ]
-    @variables dimer(t) [
+    @species dimer(t) [
         description="Abundance of dimers",
         protein=true,
         dilute=true,

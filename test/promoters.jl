@@ -24,7 +24,7 @@ const GLG = GeneticLogicGraph
 end
 
 @testset "Regulated Promoter definition" begin
-    @named ligand  = InputSpecies(1.0, 1.0)
+    @named ligand  = InputSpecies(1.0)
     @named bound   = PromoterRegion(1.0)
     @named unbound = PromoterRegion(2.0)
     @named model   = RegulatedPromoter(bound, unbound, ligand, 1.0, 1.0)
@@ -51,7 +51,7 @@ end
 end
 
 @testset "Regulated Promoter constructors" begin
-    @named ligand  = InputSpecies(1.0, 1.0)
+    @named ligand  = InputSpecies(1.0)
     @named bound   = PromoterRegion(1.0)
     @named unbound = PromoterRegion(2.0)
     @named model   = RegulatedPromoter(bound, unbound, ligand, 1.0, 1.0)
@@ -61,7 +61,7 @@ end
 end
 
 @testset "Initially random conditions - conservation law for promoters" begin
-    @named ligand  = InputSpecies(1.0, 1.0)
+    @named ligand  = InputSpecies(1.0)
     @named bound   = PromoterRegion(1.0)
     @named unbound = PromoterRegion(2.0)
     @named model   = RegulatedPromoter(bound, unbound, ligand, 1.0, 1.0)

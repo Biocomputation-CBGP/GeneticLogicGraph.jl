@@ -1,6 +1,6 @@
 function PromoterRegion(transcription; name)
     @variables t
-    @variables promoter(t)      [description="RNAP recruiting region of DNA", dilute=false]
+    @species promoter(t)      [description="RNAP recruiting region of DNA", dilute=false]
     @parameters λ=transcription [description="Transcription rate from this promoter region"]
     opts = Dict(:name => name, :connection_type => (PromoterRegion, ))
     return ReactionSystem(Reaction[], t, [promoter], [λ]; opts...)

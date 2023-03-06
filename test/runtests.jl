@@ -2,7 +2,7 @@ using GeneticLogicGraph
 using Test
 using Random
 
-Random.seed!(7)
+Random.seed!(17)
 
 @testset verbose=true "GeneticLogicGraph.jl" begin
     @testset "Graph utilities" begin
