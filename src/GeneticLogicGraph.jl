@@ -45,18 +45,30 @@ promote_rule(::Type{Monomer}, ::Type{Dimer}) = Species
 component_type(x) = first(x.connection_type)
 component_args(x) = x.connection_type[2:end]
 
-translation_reactions(x::ReactionSystem, args...) = translation_reactions(component_type(x), x, args...)
-translation_reactions(::Type{<:Component}, args...) = Reaction[]
+translation(::Type{<:Component}, args...) = Reaction[]
+function translation(x::ReactionSystem, args...)
+    return translation(component_type(x), x, args...)
+end
 
-function transcription_reactions(x::T, args::Vararg{T}) where {T<:ReactionSystem}
+transcription(::Type{<:Component}, args...) = Reaction[]
+function transcription(x::ReactionSystem, args::Vararg{<:ReactionSystem})
     T1 = component_type(x)
     T2 = promote_type(component_type.(args)...)
-    return transcription_reactions(T1, T2, x, args...)
+    return transcription(T1, T2, x, args...)
 end
-transcription_reactions(::Type{<:Component}, args...) = Reaction[]
 
-mrna_degradation_reactions(x::ReactionSystem, args...) = mrna_degradation_reactions(component_type(x), x, args...)
-mrna_degradation_reactions(::Type{<:Component}, args...) = Reaction[]
+mrna_degradation(::Type{<:Component}, args...) = Reaction[]
+function mrna_degradation(x::ReactionSystem, args...)
+    return mrna_degradation(component_type(x), x, args...)
+end
+
+protein_degradation(::Type{<:Component}, args...) = Reaction[]
+function protein_degradation(x::ReactionSystem, args...)
+    return protein_degradation(component_type(x), x, args...)
+end
+
+randu0(x::ReactionSystem, args...) = randu0(component_type(x), x, args...)
+zerou0(x::ReactionSystem, args...) = zerou0(component_type(x), x, args...)
 
 export InputSpecies
 export ConstantSpecies
@@ -68,8 +80,9 @@ export prune
 
 include("products.jl")
 export randu0
-export translation_reactions
-export mrna_degradation_reactions
+export translation
+export mrna_degradation
+export protein_degradation
 
 abstract type PromoterRegion <: Component end
 abstract type RegulatedPromoter <: PromoterRegion end
@@ -79,13 +92,13 @@ export RegulatedPromoter
 
 include("promoters.jl")
 export randu0
-export transcription_reactions
+export transcription
 
 abstract type Circuit end
 export Circuit
 
-include("graph.jl")
+include("jumpcircuit.jl")
 export make_doubling_callback
-export make_termination_callback
+export make_species_limit_callback
 
 end # module GeneticLogicGraph

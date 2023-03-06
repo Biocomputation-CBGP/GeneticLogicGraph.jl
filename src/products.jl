@@ -20,6 +20,7 @@ function InputSpecies(production; name)
     @variables species(t) [
         description="The abundance of the species",
         dilute=true,
+        protein=true,
         output=true
     ]
     rxs = [
@@ -105,39 +106,62 @@ function Dimer(translation, binding, unbinding; name)
     return ReactionSystem(rxs, t, [rna, monomer, dimer], [λ, k₋₁, k₁]; opts...)
 end
 
-function _translation_reactions(x::ReactionSystem)
-    return [Reaction(x.λ, [x.rna], [x.rna, x.monomer])]
+
+function _translation(x::ReactionSystem)
+    [Reaction(x.λ, [x.rna], [x.rna, x.monomer])]
 end
 
-function _translation_reactions(x::ReactionSystem, ribosome, r₁, r₋₁)
-    s = Symbol((@nonamespace x.rna).val.f.name, "_ribosome_complex")
-    vs = @variables t $s(t)=0 [
-        description="The ribsosome-rna complex",
-        dilute=true
-    ]
-    complex = vs[2]
-    addspecies!(x, complex)
-    return [
-        Reaction(r₁, [x.rna, ribosome], [getproperty(x, s)]),
-        Reaction(r₋₁, [getproperty(x, s)], [x.rna, ribosome]),
-        Reaction(x.λ, [getproperty(x, s)], [x.rna, ribosome, x.monomer]),
-    ]
+function translation(::Type{Monomer}, x::ReactionSystem)
+    return _translation(x)
 end
 
-function _mrna_degradation_reactions(x::ReactionSystem, α)
+function translation(::Type{Dimer}, x::ReactionSystem)
+    return _translation(x)
+end
+
+function _mrna_degradation(x::ReactionSystem, α)
     return [Reaction(α, [x.rna], nothing)]
 end
 
-translation_reactions(::Type{Monomer}, x::ReactionSystem, args...) = _translation_reactions(x, args...)
-translation_reactions(::Type{Dimer}, x::ReactionSystem, args...) = _translation_reactions(x, args...)
-mrna_degradation_reactions(::Type{Monomer}, x::ReactionSystem, args...) = _mrna_degradation_reactions(x, args...)
-mrna_degradation_reactions(::Type{Dimer}, x::ReactionSystem, args...) = _mrna_degradation_reactions(x, args...)
+function mrna_degradation(::Type{Monomer}, x::ReactionSystem, α)
+    return _mrna_degradation(x, α)
+end
 
-randu0(x::ReactionSystem) = randu0(component_type(x), x)
-randu0(::Type{ConstantSpecies}, x) = Dict(x.species => rand(0:16))
+function mrna_degradation(::Type{Dimer}, x::ReactionSystem, α)
+    return _mrna_degradation(x, α)
+end
+
+function _protein_degradation(x::ReactionSystem, α)
+    vars = filter(isdilutable, filter(isprotein, states(x, states(x))))
+    return [Reaction(α, [v], nothing) for v in vars]
+end
+
+function protein_degradation(::Type{InputSpecies}, x::ReactionSystem, α)
+    return _protein_degradation(x, α)
+end
+
+function protein_degradation(::Type{Monomer}, x::ReactionSystem, α)
+    return _protein_degradation(x, α)
+end
+
+function protein_degradation(::Type{Dimer}, x::ReactionSystem, α)
+    return _protein_degradation(x, α)
+end
+
+
+function randu0(::Type{ConstantSpecies}, x)
+    return Dict(x.species => x.defaults[@nonamespace x.species])
+end
 randu0(::Type{InputSpecies}, x) = Dict(x.species => rand(0:16))
 randu0(::Type{Monomer}, x) = Dict(x.rna => rand(0:16), x.monomer => rand(0:16))
 randu0(::Type{Dimer}, x) = merge(randu0(Monomer, x), Dict(x.dimer => rand(0:4)))
+
+function zerou0(::Type{ConstantSpecies}, x)
+    return Dict(x.species => x.defaults[@nonamespace x.species])
+end
+zerou0(::Type{InputSpecies}, x) = Dict(x.species => 0)
+zerou0(::Type{Monomer}, x) = Dict(x.rna => 0, x.monomer => 0)
+zerou0(::Type{Dimer}, x) = merge(zerou0(Monomer, x), Dict(x.dimer => 0))
 
 output(x::ReactionSystem) = output(component_type(x), x)
 output(::Type{InputSpecies}, x::ReactionSystem) = x.species

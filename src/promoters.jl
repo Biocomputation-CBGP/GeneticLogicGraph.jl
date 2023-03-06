@@ -27,25 +27,37 @@ function RegulatedPromoter(bound::Real, unbound::Real, ligand::ReactionSystem, b
     RegulatedPromoter(bound, unbound, ligand, binding, unbinding; name=name)
 end
 
-function transcription_reactions(::Type{PromoterRegion}, ::Type{<:Species}, x, args...)
+function transcription(::Type{PromoterRegion}, ::Type{<:Species}, x, args...)
     rnas = filter(ismrna, reduce(vcat, states(y, states(y)) for y in args))
+    if length(rnas) == 0
+        a = nameof(x)
+        bs = nameof.(args)
+        @warn "$a is trying to transcribe $(bs) but there is no rna to transcribe"
+        println("Clang")
+    end
     return [Reaction(x.λ, [x.promoter], [x.promoter; rnas], [1], ones(Int, length(rnas) + 1))]
 end
 
-function transcription_reactions(::Type{PromoterRegion}, ::Type{RegulatedPromoter}, x, args...)
-    return transcription_reactions(x, reduce(vcat, collect(component_args(y)) for y in args)...)
+function transcription(::Type{PromoterRegion}, ::Type{RegulatedPromoter}, x, args...)
+    return transcription(x, reduce(vcat, collect(component_args(y)) for y in args)...)
 end
 
-function transcription_reactions(::Type{RegulatedPromoter}, ::Type{RegulatedPromoter}, x, args...)
-    return vcat(transcription_reactions(x.bound, args...), transcription_reactions(x.unbound, args...))
+function transcription(::Type{RegulatedPromoter}, ::Type{RegulatedPromoter}, x, args...)
+    return vcat(transcription(x.bound, args...), transcription(x.unbound, args...))
 end
 
-function transcription_reactions(::Type{RegulatedPromoter}, ::Type{<:Species}, x, args...)
-    return vcat(transcription_reactions(x.bound, args...), transcription_reactions(x.unbound, args...))
+function transcription(::Type{RegulatedPromoter}, ::Type{<:Species}, x, args...)
+    return vcat(transcription(x.bound, args...), transcription(x.unbound, args...))
 end
 
 randu0(::Type{PromoterRegion}, x::ReactionSystem) = Dict(x.promoter => 1)
 function randu0(::Type{RegulatedPromoter}, x::ReactionSystem)
+    i = rand(0:1)
+    Dict(x.bound.promoter => i, x.unbound.promoter => 1 - i)
+end
+
+zerou0(::Type{PromoterRegion}, x::ReactionSystem) = Dict(x.promoter => 1)
+function zerou0(::Type{RegulatedPromoter}, x::ReactionSystem)
     i = rand(0:1)
     Dict(x.bound.promoter => i, x.unbound.promoter => 1 - i)
 end
