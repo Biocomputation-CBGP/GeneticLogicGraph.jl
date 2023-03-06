@@ -38,7 +38,7 @@ function Circuit(G::DiGraph, systems; name)
 
     return ReactionSystem(
         rxs, t, [N], [μ, α];
-        name=name, connection_type=(JumpCircuit,), systems=syss
+        name=name, connection_type=(Circuit,), systems=syss
     )
 end
 
@@ -81,10 +81,10 @@ function make_species_limit_callback(max_abundance)
     return DiscreteCallback(condition, affect!, save_positions=(false, false))
 end
 
-function randu0(::Type{JumpCircuit}, x::ReactionSystem)
+function randu0(::Type{Circuit}, x::ReactionSystem)
     return reduce(merge, randu0.(x.systems), init=Dict())
 end
 
-function zerou0(::Type{JumpCircuit}, x::ReactionSystem)
+function zerou0(::Type{Circuit}, x::ReactionSystem)
     return reduce(merge, zerou0.(x.systems), init=Dict())
 end
