@@ -26,7 +26,8 @@ end
 function Circuit(G::DiGraph, systems; name)
     A = Matrix(Graphs.adjacency_matrix(G) .> 0)
     syss = used_systems(A, systems)
-    @variables t N(t)=0
+    @variables t
+    @species N(t)=0
     @parameters μ α
 
     rxs = [
