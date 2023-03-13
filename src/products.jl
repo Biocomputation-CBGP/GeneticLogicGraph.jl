@@ -17,17 +17,17 @@ julia> @named IPTG = InputSpecies(1, 0.1)
 function InputSpecies(production; name)
     @parameters λ=production  [description="Rate of production for this species"]
     @variables t
-    @species species(t) [
+    @species monomer(t) [
         description="The abundance of the species",
         dilute=true,
         protein=true,
         output=true
     ]
     rxs = [
-        Reaction(λ, nothing, [species]),
+        Reaction(λ, nothing, [monomer]),
     ]
     opts = Dict(:name => name, :connection_type => (InputSpecies, ))
-    return ReactionSystem(rxs, t, [species], [λ]; opts...)
+    return ReactionSystem(rxs, t, [monomer], [λ]; opts...)
 end
 
 """
@@ -47,13 +47,13 @@ julia> @named IPTG = ConstantSpecies(1)
 """
 function ConstantSpecies(level; name)
     @variables t
-    @species species(t)=level [
+    @species monomer(t)=level [
         description="The abundance of the species",
         dilute=false,
         output=true
     ]
     opts = Dict(:name => name, :connection_type => (ConstantSpecies, ))
-    return ReactionSystem(Reaction[], t, [species], []; opts...)
+    return ReactionSystem(Reaction[], t, [monomer], []; opts...)
 end
 
 function Monomer(translation; name)
@@ -150,20 +150,20 @@ end
 
 
 function randu0(::Type{ConstantSpecies}, x)
-    return Dict(states(x, states(x)[1]) => x.defaults[x.species[1]])
+    return Dict(states(x, states(x)[1]) => x.defaults[x.monomer[1]])
 end
-randu0(::Type{InputSpecies}, x) = Dict(states(x, states(x)[1]) => rand(0:16))
+randu0(::Type{InputSpecies}, x) = Dict(x.monomer => rand(0:16))
 randu0(::Type{Monomer}, x) = Dict(x.rna => rand(0:16), x.monomer => rand(0:16))
 randu0(::Type{Dimer}, x) = merge(randu0(Monomer, x), Dict(x.dimer => rand(0:4)))
 
 function zerou0(::Type{ConstantSpecies}, x)
-    return Dict(x.species => x.defaults[@nonamespace x.species])
+    return Dict(x.species => x.defaults[@nonamespace x.monomer])
 end
-zerou0(::Type{InputSpecies}, x) = Dict(x.species => 0)
+zerou0(::Type{InputSpecies}, x) = Dict(x.monomer => 0)
 zerou0(::Type{Monomer}, x) = Dict(x.rna => 0, x.monomer => 0)
 zerou0(::Type{Dimer}, x) = merge(zerou0(Monomer, x), Dict(x.dimer => 0))
 
 output(x::ReactionSystem) = output(component_type(x), x)
-output(::Type{InputSpecies}, x::ReactionSystem) = x.species
+output(::Type{InputSpecies}, x::ReactionSystem) = x.monomer
 output(::Type{Monomer}, x::ReactionSystem) = x.monomer
 output(::Type{Dimer}, x::ReactionSystem) = x.dimer
