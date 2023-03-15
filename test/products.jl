@@ -13,10 +13,10 @@ const GLG = GeneticLogicGraph
     @test length(states(model)) == 1
     @test length(parameters(model)) == 1
 
-    @variables t species(t)
+    @variables t monomer(t)
     @test isequal(t, ModelingToolkit.get_iv(model))
-    @test any(isequal(species), states(model))
-    @test any(isequal(species), ModelingToolkit.outputs(model))
+    @test any(isequal(monomer), states(model))
+    @test any(isequal(monomer), ModelingToolkit.outputs(model))
 
     @parameters λ
     @test any(isequal(λ), parameters(model))

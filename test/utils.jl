@@ -44,10 +44,10 @@ end
     I = InputSpecies(1; name=:I)
 
     @variables t
-    v = @variables I₊species(t)
+    v = @variables I₊monomer(t)
     @test any(isequal(v[1]), keys(randu0(I)))
 
     C = ConstantSpecies(1; name=:C)
-    v = @variables C₊species(t)
+    v = @variables C₊monomer(t)
     @test any(isequal(v[1]), keys(randu0(C)))
 end

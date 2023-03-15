@@ -94,11 +94,15 @@ include("promoters.jl")
 export randu0
 export transcription
 
-abstract type Circuit end
-export Circuit
-
-include("jumpcircuit.jl")
+include("callbacks.jl")
+export MaxAbundanceError
+export MinTimestepError
 export make_doubling_callback
 export make_species_limit_callback
+export make_mintimestep_callback
+
+abstract type Circuit end
+export Circuit
+include("circuit.jl")
 
 end # module GeneticLogicGraph

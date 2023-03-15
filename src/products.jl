@@ -150,7 +150,7 @@ end
 
 
 function randu0(::Type{ConstantSpecies}, x)
-    return Dict(states(x, states(x)[1]) => x.defaults[x.monomer[1]])
+    return Dict(x.monomer => x.defaults[@nonamespace x.monomer])
 end
 randu0(::Type{InputSpecies}, x) = Dict(x.monomer => rand(0:16))
 randu0(::Type{Monomer}, x) = Dict(x.rna => rand(0:16), x.monomer => rand(0:16))
