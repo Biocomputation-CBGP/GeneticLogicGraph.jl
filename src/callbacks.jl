@@ -23,6 +23,12 @@ function Base.showerror(io::IO, e::MinTimestepError)
     return nothing
 end
 
+function make_positive_domain_callback(model)
+    condition(u, t, integrator) = any(u .< 0)
+    affect!(integrator) = throw(DomainError(u, "Error in system reactions"))
+    return DiscreteCallback(condition, affect!)
+end
+
 function make_doubling_callback(model)
     @variables t N(t)
     Ni::Int = findfirst(isequal(N), states(model))

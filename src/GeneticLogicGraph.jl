@@ -100,6 +100,7 @@ export MinTimestepError
 export make_doubling_callback
 export make_species_limit_callback
 export make_mintimestep_callback
+export make_positive_domain_callback
 
 abstract type Circuit end
 export Circuit
