@@ -1,14 +1,3 @@
-struct MaxAbundanceError <: Exception
-    idx::Int
-    abundance::Int
-end
-
-function Base.showerror(io::IO, e::MaxAbundanceError)
-    msg = "Simulation reached max abundance $(e.abundance) for species $(e.idx)"
-    print(io, msg)
-    return nothing
-end
-
 struct MinTimestepError{T<:Real} <: Exception
     dt::T
     dtmin::T
@@ -25,7 +14,7 @@ end
 
 function make_positive_domain_callback(model)
     condition(u, t, integrator) = any(u .< 0)
-    affect!(integrator) = throw(DomainError(u, "Error in system reactions"))
+    affect!(integrator) = throw(DomainError(integrator.u, "Error in system reactions"))
     return DiscreteCallback(condition, affect!)
 end
 
@@ -54,8 +43,7 @@ function make_species_limit_callback(max_abundance)
         end
     end
     function affect!(integrator)
-        x, i = findmax(integrator.u)
-        throw(MaxAbundanceError(i, x))
+        throw(DomainError(integrator.u, "Maximum abundance of species exceeded"))
     end
     return DiscreteCallback(condition, affect!, save_positions=(false, false))
 end

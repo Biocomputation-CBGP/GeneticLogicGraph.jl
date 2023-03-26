@@ -95,7 +95,6 @@ export randu0
 export transcription
 
 include("callbacks.jl")
-export MaxAbundanceError
 export MinTimestepError
 export make_doubling_callback
 export make_species_limit_callback
